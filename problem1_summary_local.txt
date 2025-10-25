@@ -1,0 +1,5 @@
+Log level distribution: 
+INFO: 1573 (82.31%)
+ERROR: 14 (0.73%)
+WARN: 14 (0.73%)
+: 310 (16.22%)
