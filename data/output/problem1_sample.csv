@@ -1,0 +1,11 @@
+,application_id,timestamp,level,component,message
+0,application_1485248649253_0121,17/06/08 13:33:56,INFO,storage.MemoryStore,"17/06/08 13:33:56 INFO storage.MemoryStore: Block broadcast_8_piece0 stored as bytes in memory (estimated size 21.4 KB, free 35.4 KB)"
+1,application_1485248649253_0121,17/06/08 13:33:58,INFO,python.PythonRunner,"17/06/08 13:33:58 INFO python.PythonRunner: Times: total = 1291, boot = 1111, init = 176, finish = 4"
+2,application_1485248649253_0121,17/06/08 13:33:58,INFO,storage.MemoryStore,"17/06/08 13:33:58 INFO storage.MemoryStore: Block rdd_2_2 stored as bytes in memory (estimated size 689.0 B, free 320.8 KB)"
+3,application_1485248649253_0121,17/06/08 13:33:58,INFO,executor.Executor,17/06/08 13:33:58 INFO executor.Executor: Running task 20.0 in stage 0.0 (TID 20)
+4,application_1485248649253_0121,17/06/08 13:33:58,INFO,spark.CacheManager,"17/06/08 13:33:58 INFO spark.CacheManager: Partition rdd_2_24 not found, computing it"
+5,application_1485248649253_0121,17/06/08 13:33:59,INFO,executor.CoarseGrainedExecutorBackend,17/06/08 13:33:59 INFO executor.CoarseGrainedExecutorBackend: Got assigned task 35
+6,application_1485248649253_0121,17/06/08 13:33:59,INFO,executor.Executor,17/06/08 13:33:59 INFO executor.Executor: Finished task 26.0 in stage 1.0 (TID 66). 2113 bytes result sent to driver
+7,application_1485248649253_0121,17/06/08 13:34:00,INFO,executor.Executor,17/06/08 13:34:00 INFO executor.Executor: Finished task 15.0 in stage 2.0 (TID 95). 2087 bytes result sent to driver
+8,application_1485248649253_0121,17/06/08 13:34:00,INFO,executor.Executor,17/06/08 13:34:00 INFO executor.Executor: Finished task 38.0 in stage 3.0 (TID 158). 2113 bytes result sent to driver
+9,application_1485248649253_0121,17/06/08 13:34:01,INFO,python.PythonRunner,"17/06/08 13:34:01 INFO python.PythonRunner: Times: total = 38, boot = -128, init = 166, finish = 0"
