@@ -1,5 +1,5 @@
 from pyspark.sql import SparkSession
-from pyspark.sql.functions import regexp_extract, col, min, max, to_timestamp, input_file_name, countDistinct, avg
+from pyspark.sql.functions import regexp_extract, col, min, max, to_timestamp, input_file_name, countDistinct, avg, unix_timestamp
 
 # Initialize Spark
 spark = SparkSession.builder.appName("LogAnalysis").getOrCreate()
@@ -112,3 +112,58 @@ top_clusters_text = 'Most heavily used clusters: \n' + '\n'.join(top_clusters_df
 # save the stats summmary to txft
 with open('problem2_stats_local.txt','w') as f:
   f.write(top_clusters_text)
+
+###### Problem2-4 #######
+# Bar chart
+import seaborn as sns
+import matplotlib.pyplot as plt
+# create bar chart df
+cluster_pd = (
+  cluster_summary
+  .select('cluster_id','num_applications')
+  .toPandas()
+)
+# create bar chart
+ax = sns.barplot(x = 'cluster_id',
+                 y='num_applications',
+                 data=cluster_pd,
+                 hue='cluster_id')
+# add labels
+for container in ax.containers:
+  ax.bar_label(container, padding=2)
+# add title
+plt.title('number of applications per cluster')
+plt.show()
+
+
+###### Problem2-5 #######
+# Density plot
+# create largest cluster dataframe
+largest_cluster_id = cluster_summary.orderBy('num_applications', ascending=False).limit(1).collect()[0][0]
+largest_cluster = time_series.withColumn(
+  'duration_seconds',
+  unix_timestamp('end_time') - unix_timestamp('start_time')
+)
+largest_cluster_pd = (
+  largest_cluster
+  .filter(col('cluster_id')==largest_cluster_id)
+  .select('cluster_id','app_number','duration_seconds')
+  .toPandas()
+)
+# create the plot
+# create the bins
+min_val = largest_cluster_pd['duration_seconds'].min()
+max_val = largest_cluster_pd['duration_seconds'].max()
+bins = range(min_val, max_val + 20 , 20)
+sns.histplot(
+  data = largest_cluster_pd,
+  x = 'duration_seconds',
+  bins = bins,
+  kde=True,
+  color='blue',
+  edgecolor='black',
+  log_scale = (True, False)
+)
+# add title including sample count
+plt.title(f'Job duration distribution with {len(largest_cluster_pd)} number of application sample')
+plt.show()
