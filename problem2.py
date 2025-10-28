@@ -1,53 +1,26 @@
+#!/usr/bin/env python3
+
+import os
+import subprocess
+import sys
+import shutil
+import time
+import logging
 from pyspark.sql import SparkSession
-from pyspark.sql.functions import regexp_extract, col, min, max, to_timestamp, input_file_name, countDistinct, avg, unix_timestamp
+from pyspark.sql.functions import (
+regexp_extract, col, min, max, to_timestamp, input_file_name, countDistinct, avg, unix_timestamp
+)
+import numpy as np
+import pandas as pd
+import seaborn as sns
+import matplotlib.pyplot as plt
 
 # Initialize Spark
 spark = SparkSession.builder.appName("LogAnalysis").getOrCreate()
 
 # Load all log files
-logs_df = spark.read.text("data/sample/application_*/*.log")
+logs_df = spark.read.text("spark-cluster/data/raw/application_*/*.log")
 
-# Parse log entries
-parsed_logs = logs_df.select(
-    regexp_extract(input_file_name(), r'(application_\d+_\d+)', 1).alias('application_id'),
-    regexp_extract('value', r'^(\d{2}/\d{2}/\d{2} \d{2}:\d{2}:\d{2})', 1).alias('timestamp'),
-    regexp_extract('value', r'(INFO|WARN|ERROR|DEBUG)', 1).alias('level'),
-    regexp_extract('value', r'(INFO|WARN|ERROR|DEBUG)\s+([^:]+):', 2).alias('component'),
-    col('value').alias('message')
-)
-
-###### Problem1-1 #######
-# Log level count
-log_level_counts = parsed_logs.groupBy('level').count()
-log_level_counts.show()
-# Save log level count to csv
-log_level_counts.toPandas().to_csv('problem1_counts_local.csv')
-
-###### Problem1-2 #######
-# 10 random sample log entries with their levels
-sampled_df = parsed_logs.filter(col('level') !='').sample(withReplacement=False, fraction=0.01).limit(10)
-sampled_df.toPandas().to_csv('problem1_sample_local.csv')
-
-###### Problem1-3 #######
-# Total lines processed
-linese_processed = parsed_logs.count()
-# Lines with log levels
-lines_with_log_levels = parsed_logs.filter(col('level') !='').count()
-# Unique log levels found
-unique_log_levels_found = parsed_logs.filter(col('level') !='').select('level').distinct().count()
-# Log level distribution
-total = parsed_logs.count()
-distribution = []
-for row in log_level_counts.collect():
-    level = row['level']
-    count = row['count']
-    pct = count/total * 100
-    distribution.append(f'{level}: {count} ({pct:.2f}%)')
-distribution_text = 'Log level distribution: \n' + '\n'.join(distribution)
-print(distribution_text)
-# save the summmary to csv
-with open('problem1_summary_local.txt','w') as f:
-  f.write(distribution_text)
 
 ###### Problem2-1 #######
 # Parse log entries include application, cluster and app columns
@@ -78,7 +51,8 @@ time_series = (
   .orderBy('application_id')
 )
 # Save to csv file
-time_series.toPandas().to_csv('problem2_timeline_local.csv')
+time_series.toPandas().to_csv('spark-cluster/problem2_timeline.csv')
+
 
 ###### Problem2-2 #######
 cluster_summary = (
@@ -92,31 +66,31 @@ cluster_summary = (
   .orderBy('cluster_id')
 )
 # save to csv
-cluster_summary.toPandas().to_csv('cluster_summary_local.csv')
+cluster_summary.toPandas().to_csv('spark-cluster/problem2_cluster_summary.csv')
+
 
 ###### Problem2-3 #######
 # number of clusters
 unique_clusters = parsed_logs.select(countDistinct('cluster_id')).collect()[0][0]
 # total applications
-total_applications = parsed_logs.select(countDistinct('application_id'))
+total_applications = parsed_logs.select(countDistinct('application_id')).collect()[0][0]
 # average applications per cluster
 avg_app_per_cluster = cluster_summary.select(avg('num_applications')).collect()[0][0]
 # most heavily used clusters
-top_clusters = cluster_summary.select('cluster_id','num_applications').orderBy('num_applications', ascending=False).limit(5)
+top_clusters = cluster_summary.select('cluster_id','num_applications').orderBy('num_applications', ascending=False).limit(1)
 top_clusters_df = []
 for row in top_clusters.collect():
     cluster_id = row['cluster_id']
     num_applications = row['num_applications']
     top_clusters_df.append(f'Cluster {cluster_id}: {num_applications} applications')
-top_clusters_text = 'Most heavily used clusters: \n' + '\n'.join(top_clusters_df)
+top_clusters_text = f'Total unique cluxsters: {unique_clusters} \n Total applications: {total_applications} \n Average applications per cluster:{avg_app_per_cluster} \n Most heavily used clusters: \n' + '\n'.join(top_clusters_df)
 # save the stats summmary to txft
-with open('problem2_stats_local.txt','w') as f:
+with open('spark-cluster/problem2_stats.txt','w') as f:
   f.write(top_clusters_text)
+
 
 ###### Problem2-4 #######
 # Bar chart
-import seaborn as sns
-import matplotlib.pyplot as plt
 # create bar chart df
 cluster_pd = (
   cluster_summary
@@ -124,16 +98,19 @@ cluster_pd = (
   .toPandas()
 )
 # create bar chart
+plt.figure(figsize = (10,8))
 ax = sns.barplot(x = 'cluster_id',
                  y='num_applications',
                  data=cluster_pd,
                  hue='cluster_id')
+plt.xticks(rotation=45, ha='right')
 # add labels
 for container in ax.containers:
   ax.bar_label(container, padding=2)
 # add title
 plt.title('number of applications per cluster')
 plt.show()
+plt.savefig('spark-cluster/problem2_bar_chart.png')
 
 
 ###### Problem2-5 #######
@@ -154,16 +131,36 @@ largest_cluster_pd = (
 # create the bins
 min_val = largest_cluster_pd['duration_seconds'].min()
 max_val = largest_cluster_pd['duration_seconds'].max()
-bins = range(min_val, max_val + 20 , 20)
+
+bins = list(range(min_val, max_val+2000, 2000))
+# create density plot - without log-transform
 sns.histplot(
   data = largest_cluster_pd,
   x = 'duration_seconds',
   bins = bins,
   kde=True,
   color='blue',
-  edgecolor='black',
-  log_scale = (True, False)
+  edgecolor='black'
 )
 # add title including sample count
-plt.title(f'Job duration distribution with {len(largest_cluster_pd)} number of application sample')
+plt.title(f'Job duration distribution with {len(largest_cluster_pd)} number of applications sample')
 plt.show()
+plt.savefig('spark-cluster/problem2_density_plot.png')
+
+# create density plot - without log-transform
+
+largest_cluster_pd['log_duration'] = np.log10(largest_cluster_pd['duration_seconds'])
+bins = np.arange(largest_cluster_pd['log_duration'].min(),
+                 largest_cluster_pd['log_duration'].max() + 0.05, 0.05)
+sns.histplot(
+  data = largest_cluster_pd,
+  x = 'log_duration',
+  bins = bins,
+  kde=True,
+  color='blue',
+  edgecolor='black'
+)
+# add title including sample count
+plt.title(f'Job duration distri. with {len(largest_cluster_pd)} number of apps (log-transformed)')
+plt.show()
+plt.savefig('spark-cluster/problem2_density_plot_log_transformed.png')

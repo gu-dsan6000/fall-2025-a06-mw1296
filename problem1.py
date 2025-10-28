@@ -10,6 +10,7 @@ from pyspark.sql import SparkSession
 from pyspark.sql.functions import (
 regexp_extract, col, min, max, to_timestamp, input_file_name, countDistinct, avg, unix_timestamp
 )
+import numpy as np
 import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
@@ -29,17 +30,17 @@ parsed_logs = logs_df.select(
     col('value').alias('message')
 )
 
-# ###### Problem1-1 #######
+###### Problem1-1 #######
 # Log level count
 log_level_counts = parsed_logs.groupBy('level').count()
-# log_level_counts.show()
-# # Save log level count to csv
-# log_level_counts.toPandas().to_csv('spark-cluster/problem1_counts.csv')
+log_level_counts.show()
+# Save log level count to csv
+log_level_counts.toPandas().to_csv('spark-cluster/problem1_counts.csv')
 
-# ###### Problem1-2 #######
-# # 10 random sample log entries with their levels
-# sampled_df = parsed_logs.filter(col('level') !='').sample(withReplacement=False, fraction=0.01).limit(10)
-# sampled_df.toPandas().to_csv('spark-cluster/problem1_sample.csv')
+###### Problem1-2 #######
+# 10 random sample log entries with their levels
+sampled_df = parsed_logs.filter(col('level') !='').sample(withReplacement=False, fraction=0.01).limit(10)
+sampled_df.toPandas().to_csv('spark-cluster/problem1_sample.csv')
 
 ###### Problem1-3 #######
 # Total lines processed
